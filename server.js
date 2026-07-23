@@ -5,19 +5,16 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // هذا السطر يخدم صفحة الدفع
+app.use(express.static('public'));
 
-// ===== كلمة المرور الافتراضية =====
 let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Sameer2024!';
 let transactions = [];
 let pendingApprovals = [];
 
-// ========== واجهة العميل ==========
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/public/index.html');
 });
 
-// ========== بقية المسارات (create-payment, approve, reject, admin, etc.) ==========
 app.post('/api/create-payment', async (req, res) => {
   try {
     const { amount, paymentMethodId } = req.body;
