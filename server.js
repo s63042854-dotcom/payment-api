@@ -5,29 +5,26 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public')); // هذا السطر يخدم صفحة الدفع
 
-// ===== كلمة المرور الافتراضية (قابلة للتغيير من التطبيق) =====
+// ===== كلمة المرور الافتراضية =====
 let ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Sameer2024!';
-
-// ===== قاعدة بيانات وهمية =====
 let transactions = [];
 let pendingApprovals = [];
 
 // ========== واجهة العميل ==========
 app.get('/', (req, res) => {
-  res.send('Payment API is running!');
+  res.sendFile(__dirname + '/public/index.html');
 });
 
-// ========== إنشاء طلب دفع (معلق) ==========
+// ========== بقية المسارات (create-payment, approve, reject, admin, etc.) ==========
 app.post('/api/create-payment', async (req, res) => {
   try {
     const { amount, paymentMethodId } = req.body;
     const amountInCents = Math.round(parseFloat(amount) * 100);
-
     if (!amountInCents || amountInCents < 50) {
       return res.status(400).json({ error: 'المبلغ غير صالح (الحد الأدنى 0.50 يورو)' });
     }
-
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountInCents,
       currency: 'eur',
@@ -36,7 +33,6 @@ app.post('/api/create-payment', async (req, res) => {
       capture_method: 'manual',
       description: 'دفع عبر الموقع - في انتظار الموافقة',
     });
-
     const transaction = {
       id: paymentIntent.id,
       amount: amount,
@@ -46,72 +42,55 @@ app.post('/api/create-payment', async (req, res) => {
       stripeStatus: paymentIntent.status,
       paymentMethodId: paymentMethodId,
     };
-
     transactions.unshift(transaction);
     pendingApprovals.push(transaction.id);
-
     res.json({
       success: true,
       message: 'تم استلام طلب الدفع، في انتظار موافقة المكتب',
       transaction,
     });
-
   } catch (err) {
     console.error(err);
     res.status(400).json({ error: err.message });
   }
 });
 
-// ========== عرض جميع المعاملات ==========
 app.get('/api/transactions', (req, res) => {
   res.json(transactions);
 });
 
-// ========== الموافقة على الدفع ==========
 app.post('/api/approve/:id', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'كلمة مرور خاطئة' });
   }
-
   try {
     const { id } = req.params;
     const captured = await stripe.paymentIntents.capture(id);
-
-    transactions = transactions.map(t =>
-      t.id === id ? { ...t, status: 'approved' } : t
-    );
+    transactions = transactions.map(t => t.id === id ? { ...t, status: 'approved' } : t);
     pendingApprovals = pendingApprovals.filter(pid => pid !== id);
-
     res.json({ success: true, message: 'تمت الموافقة وسحب المبلغ بنجاح', captured });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// ========== رفض الدفع ==========
 app.post('/api/reject/:id', async (req, res) => {
   const { password } = req.body;
   if (password !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'كلمة مرور خاطئة' });
   }
-
   try {
     const { id } = req.params;
     const canceled = await stripe.paymentIntents.cancel(id);
-
-    transactions = transactions.map(t =>
-      t.id === id ? { ...t, status: 'rejected' } : t
-    );
+    transactions = transactions.map(t => t.id === id ? { ...t, status: 'rejected' } : t);
     pendingApprovals = pendingApprovals.filter(pid => pid !== id);
-
     res.json({ success: true, message: 'تم رفض الطلب وإلغاء الحجز', canceled });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// ========== تغيير كلمة المرور (من التطبيق) ==========
 app.post('/api/change-password', (req, res) => {
   const { oldPassword, newPassword } = req.body;
   if (oldPassword !== ADMIN_PASSWORD) {
@@ -124,7 +103,6 @@ app.post('/api/change-password', (req, res) => {
   res.json({ success: true, message: 'تم تغيير كلمة المرور بنجاح' });
 });
 
-// ========== لوحة التحكم الإدارية ==========
 app.get('/admin', (req, res) => {
   res.send(`
     <html dir="rtl">
@@ -159,7 +137,6 @@ app.get('/admin', (req, res) => {
       const form = document.getElementById('passwordForm');
       form.style.display = form.style.display === 'none' ? 'block' : 'none';
     }
-
     function changePassword() {
       const oldPass = document.getElementById('oldPass').value;
       const newPass = document.getElementById('newPass').value;
@@ -177,7 +154,6 @@ app.get('/admin', (req, res) => {
         }
       });
     }
-
     fetch('/api/transactions')
       .then(res => res.json())
       .then(data => {
@@ -198,7 +174,6 @@ app.get('/admin', (req, res) => {
         html += '</table>';
         document.getElementById('transactions-list').innerHTML = html;
       });
-
     function approve(id) {
       const pass = prompt('أدخل كلمة المرور:');
       if (!pass) return;
@@ -213,7 +188,6 @@ app.get('/admin', (req, res) => {
         location.reload();
       });
     }
-
     function reject(id) {
       const pass = prompt('أدخل كلمة المرور:');
       if (!pass) return;
@@ -234,7 +208,6 @@ app.get('/admin', (req, res) => {
   `);
 });
 
-// ========== نقطة الصحة ==========
 app.get('/healthz', (req, res) => {
   res.json({ status: 'OK', time: new Date().toISOString() });
 });
