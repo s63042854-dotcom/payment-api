@@ -7,16 +7,16 @@
   <script src="https://js.stripe.com/v3/"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background: #0a0a0a; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-    .container { background: #1a1a2e; padding: 30px; border-radius: 16px; max-width: 400px; width: 100%; color: #fff; border: 1px solid #333; }
-    h2 { color: #6b9aff; margin-bottom: 20px; text-align: center; }
-    label { display: block; margin: 10px 0 5px; color: #aaa; }
-    input { width: 100%; padding: 12px; background: #0b0b1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 16px; }
-    #card-element { background: #0b0b1a; padding: 12px; border-radius: 8px; border: 1px solid #333; margin: 10px 0; }
-    button { width: 100%; padding: 14px; background: #2d6eff; color: #fff; border: none; border-radius: 8px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+    body { background: #0a0a0a; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+    .container { background: #1a1a2e; padding: 25px; border-radius: 16px; max-width: 450px; width: 100%; color: #fff; border: 1px solid #333; }
+    h2 { color: #6b9aff; font-size: 28px; text-align: center; margin-bottom: 20px; }
+    label { display: block; margin: 15px 0 5px; color: #ccc; font-size: 18px; }
+    input { width: 100%; padding: 14px; background: #0b0b1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 18px; }
+    #card-element { background: #0b0b1a; padding: 14px; border-radius: 8px; border: 1px solid #333; margin: 10px 0; }
+    button { width: 100%; padding: 16px; background: #2d6eff; color: #fff; border: none; border-radius: 8px; font-weight: bold; font-size: 20px; cursor: pointer; margin-top: 15px; transition: 0.3s; }
     button:hover { background: #1a4fcf; }
-    #status { margin-top: 15px; padding: 12px; background: #0b0b1a; border-radius: 8px; text-align: center; color: #aaa; }
-    .fee-note { font-size: 12px; color: #667; text-align: center; margin-top: 15px; border-top: 1px solid #1a253a; padding-top: 10px; }
+    #status { margin-top: 15px; padding: 14px; background: #0b0b1a; border-radius: 8px; text-align: center; font-size: 16px; color: #aaa; }
+    .fee-note { font-size: 14px; color: #667; text-align: center; margin-top: 15px; border-top: 1px solid #1a253a; padding-top: 10px; }
   </style>
 </head>
 <body>
@@ -31,7 +31,7 @@
   <div class="fee-note">* سيتم خصم رسوم Stripe (2.9% + 0.30€) قبل وصول المبلغ للحساب البنكي.</div>
 </div>
 <script>
-const stripe = Stripe('pk_live_...'); // ⚠️ ضع المفتاح العام هنا (pk_live_...)
+const stripe = Stripe('pk_live_51TvOL8EcBjDcWozq9UizS8CDpdXG6n1IcEkSFdEcOspDZjVvw1eudnTmmuk2cETEfGOt9peZqbzt7ApcOnrMvqxZ00XgVqwZwk');
 const elements = stripe.elements();
 const cardElement = elements.create('card');
 cardElement.mount('#card-element');
