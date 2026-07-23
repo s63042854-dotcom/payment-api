@@ -22,6 +22,10 @@ app.post('/api/create-payment', async (req, res) => {
       payment_method: paymentMethodId,
       confirm: true,
       capture_method: 'manual',
+      automatic_payment_methods: {
+        enabled: true,
+        allow_redirects: 'never',
+      },
       description: 'دفع عبر الموقع',
     });
 
