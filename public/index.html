@@ -1,73 +1,49 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>بوابة الدفع</title>
-  <script src="https://js.stripe.com/v3/"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background: #0a0a0a; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
-    .container { background: #1a1a2e; padding: 25px; border-radius: 16px; max-width: 450px; width: 100%; color: #fff; border: 1px solid #333; }
-    h2 { color: #6b9aff; font-size: 28px; text-align: center; margin-bottom: 20px; }
-    label { display: block; margin: 15px 0 5px; color: #ccc; font-size: 18px; }
-    input { width: 100%; padding: 14px; background: #0b0b1a; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 18px; }
-    #card-element { background: #0b0b1a; padding: 14px; border-radius: 8px; border: 1px solid #333; margin: 10px 0; }
-    button { width: 100%; padding: 16px; background: #2d6eff; color: #fff; border: none; border-radius: 8px; font-weight: bold; font-size: 20px; cursor: pointer; margin-top: 15px; transition: 0.3s; }
-    button:hover { background: #1a4fcf; }
-    #status { margin-top: 15px; padding: 14px; background: #0b0b1a; border-radius: 8px; text-align: center; font-size: 16px; color: #aaa; }
-    .fee-note { font-size: 14px; color: #667; text-align: center; margin-top: 15px; border-top: 1px solid #1a253a; padding-top: 10px; }
-  </style>
-</head>
-<body>
-<div class="container">
-  <h2>💳 بوابة الدفع</h2>
-  <label>💰 المبلغ (يورو)</label>
-  <input type="number" id="amount" value="10" step="1" min="1">
-  <label>💳 بيانات البطاقة</label>
-  <div id="card-element"></div>
-  <button id="payBtn">دفع الآن</button>
-  <div id="status">🟢 أدخل بيانات بطاقتك</div>
-  <div class="fee-note">* سيتم خصم رسوم Stripe (2.9% + 0.30€) قبل وصول المبلغ للحساب البنكي.</div>
-</div>
-<script>
-const stripe = Stripe('pk_live_51TvOL8EcBjDcWozq9UizS8CDpdXG6n1IcEkSFdEcOspDZjVvw1eudnTmmuk2cETEfGOt9peZqbzt7ApcOnrMvqxZ00XgVqwZwk');
-const elements = stripe.elements();
-const cardElement = elements.create('card');
-cardElement.mount('#card-element');
+const express = require('express');
+const cors = require('cors');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-document.getElementById('payBtn').addEventListener('click', async () => {
-  const status = document.getElementById('status');
-  const amount = document.getElementById('amount').value;
-  if (!amount || amount <= 0) { status.innerHTML = '❌ أدخل مبلغاً صحيحاً.'; return; }
-  status.innerHTML = '⏳ جاري المعالجة...';
-  document.getElementById('payBtn').disabled = true;
+const app = express();
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
 
+app.post('/api/create-payment', async (req, res) => {
   try {
-    const { paymentMethod, error } = await stripe.createPaymentMethod({
-      type: 'card',
-      card: cardElement,
-    });
-    if (error) { status.innerHTML = '❌ ' + error.message; document.getElementById('payBtn').disabled = false; return; }
+    const { amount, paymentMethodId } = req.body;
+    const amountInCents = Math.round(parseFloat(amount) * 100);
 
-    const response = await fetch('/api/create-payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: amount, paymentMethodId: paymentMethod.id }),
-    });
-    const data = await response.json();
-    if (data.success) {
-      status.innerHTML = '✅ ' + data.message;
-      status.style.color = '#a5d6a7';
-    } else {
-      status.innerHTML = '❌ ' + data.error;
-      status.style.color = '#ff8a80';
+    if (!amountInCents || amountInCents < 50) {
+      return res.status(400).json({ error: 'المبلغ غير صالح (الحد الأدنى 0.50 يورو)' });
     }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amountInCents,
+      currency: 'eur',
+      payment_method: paymentMethodId,
+      confirm: true,
+      capture_method: 'manual',
+      automatic_payment_methods: {
+        enabled: true,
+        allow_redirects: 'never',
+      },
+      description: 'دفع عبر الموقع',
+    });
+
+    res.json({
+      success: true,
+      message: 'تم استلام طلب الدفع، ستتم الموافقة عليه عبر Stripe Dashboard',
+      transaction: { id: paymentIntent.id, amount: amount, status: paymentIntent.status }
+    });
+
   } catch (err) {
-    status.innerHTML = '❌ خطأ في الاتصال: ' + err.message;
+    console.error(err);
+    res.status(400).json({ error: err.message });
   }
-  document.getElementById('payBtn').disabled = false;
 });
-</script>
-</body>
-</html>
+
+app.get('/healthz', (req, res) => {
+  res.json({ status: 'OK', time: new Date().toISOString() });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
